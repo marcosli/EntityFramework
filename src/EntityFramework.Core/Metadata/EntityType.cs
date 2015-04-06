@@ -587,7 +587,7 @@ namespace Microsoft.Data.Entity.Metadata
 
         private void CheckForeignKeyNotInUse(ForeignKey foreignKey)
         {
-            var navigation = foreignKey.GetNavigationToDependent() ?? foreignKey.GetNavigationToPrincipal();
+            var navigation = foreignKey.PrincipalToDependent ?? foreignKey.DependentToPrincipal;
 
             if (navigation != null)
             {
@@ -656,9 +656,8 @@ namespace Microsoft.Data.Entity.Metadata
             }
 
             var otherNavigation = _navigations.Values.FirstOrDefault(
-                n =>
-                    n.ForeignKey == navigation.ForeignKey
-                    && n.PointsToPrincipal == navigation.PointsToPrincipal);
+                n => n.ForeignKey == navigation.ForeignKey
+                     && n.PointsToPrincipal() == navigation.PointsToPrincipal());
 
             if (otherNavigation != null)
             {
@@ -705,7 +704,17 @@ namespace Microsoft.Data.Entity.Metadata
             Navigation removedNavigation;
             if (_navigations.TryGetValue(navigation.Name, out removedNavigation))
             {
+                if (navigation.PointsToPrincipal())
+                {
+                    navigation.ForeignKey.DependentToPrincipal = null;
+                }
+                else
+                {
+                    navigation.ForeignKey.PrincipalToDependent = null;
+                }
+
                 _navigations.Remove(navigation.Name);
+
                 return removedNavigation;
             }
 
